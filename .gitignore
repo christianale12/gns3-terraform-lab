@@ -1,0 +1,25 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Variables con posibles datos sensibles
+*.tfvars
+*.tfvars.json
+
+# Mantener el archivo de ejemplo
+!terraform.tfvars.example
+
+# Mantener el lock file de Terraform
+# .terraform.lock.hcl NO se ignora
+
+# Logs
+*.log
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
