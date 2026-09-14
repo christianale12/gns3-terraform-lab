@@ -54,6 +54,27 @@ resource "gns3_template" "mikrotik1" {
   y = 0
 }
 
+resource "gns3_template" "mikrotik2" {
+  project_id  = gns3_project.lab.project_id
+  name        = "MikroTik-Edge-Router"
+  template_id = "a64bed07-cbe9-4e74-8645-366f9e9d472b"
+
+  start = true
+
+  x = 250
+  y = 0
+}
+
+resource "gns3_template" "mikrotik3" {
+  project_id  = gns3_project.lab.project_id
+  name        = "MikroTik-Edge-Router"
+  template_id = "a64bed07-cbe9-4e74-8645-366f9e9d472b"
+
+  start = true
+
+  x = 500
+  y = 0
+}
 
 # ------------------------------------------------------------
 # 5. PC DE OFICINA - VPCS
@@ -66,8 +87,19 @@ resource "gns3_template" "office_pc" {
 
   start = true
 
-  x = 300
-  y = 100
+  x = -100
+  y = 200
+}
+
+resource "gns3_template" "office_pc2" {
+  project_id  = gns3_project.lab.project_id
+  name        = "Office-PC2"
+  template_id = "19021f99-e36f-394d-b4a1-8aaa902ab9cc"
+
+  start = true
+
+  x = 100
+  y = 200
 }
 
 
@@ -114,7 +146,7 @@ resource "gns3_link" "link_mikrotik_switch" {
 # SWITCH <-> PC
 # ------------------------------------------------------------
 
-resource "gns3_link" "link_switch_pc" {
+resource "gns3_link" "link_switch_pc1" {
   project_id = gns3_project.lab.project_id
 
   node_a_id      = gns3_switch.switch1.id
@@ -123,6 +155,55 @@ resource "gns3_link" "link_switch_pc" {
 
   node_b_id      = gns3_template.office_pc.id
   node_b_adapter = 0
+  node_b_port    = 0
+}
+
+# ------------------------------------------------------------
+# SWITCH <-> PC2
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_switch_pc2" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_switch.switch1.id
+  node_a_adapter = 0
+  node_a_port    = 2
+
+  node_b_id      = gns3_template.office_pc2.id
+  node_b_adapter = 0
+  node_b_port    = 0
+}
+
+
+# ------------------------------------------------------------
+# MIKROTIK1 <-> mikrotik2
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_mikrotik1_mikrotik2" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_template.mikrotik1.id
+  node_a_adapter = 2
+  node_a_port    = 0
+
+  node_b_id      = gns3_template.mikrotik2.id
+  node_b_adapter = 1
+  node_b_port    = 0
+}
+
+# ------------------------------------------------------------
+# MIKROTIK2 <-> mikrotik3
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_mikrotik2_mikrotik3" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_template.mikrotik2.id
+  node_a_adapter = 2
+  node_a_port    = 0
+
+  node_b_id      = gns3_template.mikrotik3.id
+  node_b_adapter = 1
   node_b_port    = 0
 }
 
