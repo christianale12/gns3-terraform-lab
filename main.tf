@@ -21,8 +21,8 @@ resource "gns3_nat" "internet" {
   project_id = gns3_project.lab.project_id
   name       = "Internet-NAT"
 
-  x = -300
-  y = 0
+  x = 100
+  y = -200
 }
 
 
@@ -36,6 +36,18 @@ resource "gns3_switch" "switch1" {
 
   x = 0
   y = 100
+}
+
+# ------------------------------------------------------------
+#  SWITCH CORE L2 a NAT
+# ------------------------------------------------------------
+
+resource "gns3_switch" "switch2" {
+  project_id = gns3_project.lab.project_id
+  name       = "Core-Switch2"
+
+  x = 150
+  y = -100
 }
 
 
@@ -61,7 +73,7 @@ resource "gns3_template" "mikrotik2" {
 
   start = true
 
-  x = 250
+  x = 150
   y = 0
 }
 
@@ -72,7 +84,7 @@ resource "gns3_template" "mikrotik3" {
 
   start = true
 
-  x = 500
+  x = 300
   y = 0
 }
 
@@ -109,7 +121,7 @@ resource "gns3_template" "office_pc2" {
 
 
 # ------------------------------------------------------------
-# NAT <-> MIKROTIK
+# NAT <-> SWITCH2
 # ------------------------------------------------------------
 
 resource "gns3_link" "link_nat_mikrotik" {
@@ -119,14 +131,15 @@ resource "gns3_link" "link_nat_mikrotik" {
   node_a_adapter = 0
   node_a_port    = 0
 
-  node_b_id      = gns3_template.mikrotik1.id
+  node_b_id      = gns3_switch.switch2.id
   node_b_adapter = 0
   node_b_port    = 0
+
 }
 
 
 # ------------------------------------------------------------
-# MIKROTIK <-> SWITCH
+# MIKROTIK1 <-> SWITCH
 # ------------------------------------------------------------
 
 resource "gns3_link" "link_mikrotik_switch" {
@@ -176,8 +189,63 @@ resource "gns3_link" "link_switch_pc2" {
 
 
 # ------------------------------------------------------------
+# SWITCH2 <-> mikrotik
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_switch2_mikro1" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_switch.switch2.id
+  node_a_adapter = 0
+  node_a_port    = 1
+
+  node_b_id      = gns3_template.mikrotik1.id
+  node_b_adapter = 0
+  node_b_port    = 0
+
+}
+
+# ------------------------------------------------------------
+# SWITCH2 <-> mikrotik2
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_switch2_mikro2" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_switch.switch2.id
+  node_a_adapter = 0
+  node_a_port    = 2
+
+  node_b_id      = gns3_template.mikrotik2.id
+  node_b_adapter = 0
+  node_b_port    = 0
+
+}
+
+# ------------------------------------------------------------
+# SWITCH2 <-> mikrotik3
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_switch_2_mikro3" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_switch.switch2.id
+  node_a_adapter = 0
+  node_a_port    = 3
+
+  node_b_id      = gns3_template.mikrotik3.id
+  node_b_adapter = 0
+  node_b_port    = 0
+
+}
+
+
+# ------------------------------------------------------------
 # MIKROTIK1 <-> mikrotik2
 # ------------------------------------------------------------
+
+
+
 
 resource "gns3_link" "link_mikrotik1_mikrotik2" {
   project_id = gns3_project.lab.project_id
@@ -275,25 +343,38 @@ resource "null_resource" "fix_switch_symbol" {
   ]
 
   triggers = {
-    node_id = gns3_switch.switch1.id
+    switch1_id = gns3_switch.switch1.id
+    switch2_id = gns3_switch.switch2.id
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      curl --fail --silent --show-error \
-        --connect-timeout 2 \
-        --max-time 5 \
-        -X PUT \
-        http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch1.id} \
-        -H "Content-Type: application/json" \
-        -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
-        -o /dev/null
 
-      echo "Switch icon actualizado correctamente"
-    EOT
+    curl --fail --silent --show-error \
+      --connect-timeout 2 \
+      --max-time 5 \
+      -X PUT \
+      http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch1.id} \
+      -H "Content-Type: application/json" \
+      -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
+      -o /dev/null
+
+    echo "Switch1 icon actualizado correctamente"
+
+    curl --fail --silent --show-error \
+      --connect-timeout 2 \
+      --max-time 5 \
+      -X PUT \
+      http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch2.id} \
+      -H "Content-Type: application/json" \
+      -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
+      -o /dev/null
+
+    echo "Switch2 icon actualizado correctamente"
+
+  EOT
   }
 }
-
 
 # ------------------------------------------------------------
 # PC
