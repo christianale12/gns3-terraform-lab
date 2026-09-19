@@ -9,5 +9,5 @@ terraform {
 }
 
 provider "gns3" {
-  host = "http://localhost:3080"
+  host = var.gns3_host
 }

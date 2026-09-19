@@ -1,0 +1,7 @@
+# Copia este archivo como "terraform.tfvars" y ajusta los valores
+# segun tu servidor GNS3. terraform.tfvars NO se sube a Git.
+
+# Bu squeda los UUID de tus templates:
+#   GET http://localhost:3080/v2/templates
+mikrotik_template_id = "a64bed07-cbe9-4e74-8645-366f9e9d472b"
+vpcs_template_id     = "19021f99-e36f-394d-b4a1-8aaa902ab9cc"

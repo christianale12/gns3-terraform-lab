@@ -9,7 +9,7 @@
 # ------------------------------------------------------------
 
 resource "gns3_project" "lab" {
-  name = "enterprise_branch_lab"
+  name = var.project_name
 }
 
 
@@ -53,65 +53,38 @@ resource "gns3_switch" "switch2" {
 
 # ------------------------------------------------------------
 # 4. ROUTER MIKROTIK CHR
+# for_each: UN solo bloque genera TODOS los routers.
+# La lista vive en var.mikrotik_routers (variables.tf).
 # ------------------------------------------------------------
 
-resource "gns3_template" "mikrotik1" {
+resource "gns3_template" "mikrotik" {
+  for_each    = var.mikrotik_routers
   project_id  = gns3_project.lab.project_id
-  name        = "MikroTik-Edge-Router"
-  template_id = "a64bed07-cbe9-4e74-8645-366f9e9d472b"
+  name        = each.value.name
+  template_id = var.mikrotik_template_id
 
   start = true
 
-  x = 0
-  y = 0
-}
-
-resource "gns3_template" "mikrotik2" {
-  project_id  = gns3_project.lab.project_id
-  name        = "MikroTik-Edge-Router"
-  template_id = "a64bed07-cbe9-4e74-8645-366f9e9d472b"
-
-  start = true
-
-  x = 150
-  y = 0
-}
-
-resource "gns3_template" "mikrotik3" {
-  project_id  = gns3_project.lab.project_id
-  name        = "MikroTik-Edge-Router"
-  template_id = "a64bed07-cbe9-4e74-8645-366f9e9d472b"
-
-  start = true
-
-  x = 300
-  y = 0
+  x = each.value.x
+  y = each.value.y
 }
 
 # ------------------------------------------------------------
 # 5. PC DE OFICINA - VPCS
+# for_each: UN solo bloque genera TODOS los PCs.
+# La lista vive en var.office_pcs (variables.tf).
 # ------------------------------------------------------------
 
 resource "gns3_template" "office_pc" {
+  for_each    = var.office_pcs
   project_id  = gns3_project.lab.project_id
-  name        = "Office-PC"
-  template_id = "19021f99-e36f-394d-b4a1-8aaa902ab9cc"
+  name        = each.value.name
+  template_id = var.vpcs_template_id
 
   start = true
 
-  x = -100
-  y = 200
-}
-
-resource "gns3_template" "office_pc2" {
-  project_id  = gns3_project.lab.project_id
-  name        = "Office-PC2"
-  template_id = "19021f99-e36f-394d-b4a1-8aaa902ab9cc"
-
-  start = true
-
-  x = 100
-  y = 200
+  x = each.value.x
+  y = each.value.y
 }
 
 
@@ -145,7 +118,7 @@ resource "gns3_link" "link_nat_mikrotik" {
 resource "gns3_link" "link_mikrotik_switch" {
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_template.mikrotik1.id
+  node_a_id      = gns3_template.mikrotik["edge1"].id
   node_a_adapter = 1
   node_a_port    = 0
 
@@ -166,7 +139,7 @@ resource "gns3_link" "link_switch_pc1" {
   node_a_adapter = 0
   node_a_port    = 1
 
-  node_b_id      = gns3_template.office_pc.id
+  node_b_id      = gns3_template.office_pc["pc1"].id
   node_b_adapter = 0
   node_b_port    = 0
 }
@@ -182,99 +155,53 @@ resource "gns3_link" "link_switch_pc2" {
   node_a_adapter = 0
   node_a_port    = 2
 
-  node_b_id      = gns3_template.office_pc2.id
+  node_b_id      = gns3_template.office_pc["pc2"].id
   node_b_adapter = 0
   node_b_port    = 0
 }
 
 
+
+
 # ------------------------------------------------------------
-# SWITCH2 <-> mikrotik
+# CADENA router <-> router (un solo bloque genera todos los pares)
+# Regla física: router N se une con router N+1 (adap2 p0 -> adap1 p0)
 # ------------------------------------------------------------
 
-resource "gns3_link" "link_switch2_mikro1" {
-  project_id = gns3_project.lab.project_id
-
-  node_a_id      = gns3_switch.switch2.id
-  node_a_adapter = 0
-  node_a_port    = 1
-
-  node_b_id      = gns3_template.mikrotik1.id
-  node_b_adapter = 0
-  node_b_port    = 0
-
+locals {
+  router_chain = tolist(keys(var.mikrotik_routers))
 }
 
-# ------------------------------------------------------------
-# SWITCH2 <-> mikrotik2
-# ------------------------------------------------------------
-
-resource "gns3_link" "link_switch2_mikro2" {
+resource "gns3_link" "router_to_router" {
+  count      = length(local.router_chain) - 1
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_switch.switch2.id
-  node_a_adapter = 0
-  node_a_port    = 2
-
-  node_b_id      = gns3_template.mikrotik2.id
-  node_b_adapter = 0
-  node_b_port    = 0
-
-}
-
-# ------------------------------------------------------------
-# SWITCH2 <-> mikrotik3
-# ------------------------------------------------------------
-
-resource "gns3_link" "link_switch_2_mikro3" {
-  project_id = gns3_project.lab.project_id
-
-  node_a_id      = gns3_switch.switch2.id
-  node_a_adapter = 0
-  node_a_port    = 3
-
-  node_b_id      = gns3_template.mikrotik3.id
-  node_b_adapter = 0
-  node_b_port    = 0
-
-}
-
-
-# ------------------------------------------------------------
-# MIKROTIK1 <-> mikrotik2
-# ------------------------------------------------------------
-
-
-
-
-resource "gns3_link" "link_mikrotik1_mikrotik2" {
-  project_id = gns3_project.lab.project_id
-
-  node_a_id      = gns3_template.mikrotik1.id
+  node_a_id      = gns3_template.mikrotik[local.router_chain[count.index]].id
   node_a_adapter = 2
   node_a_port    = 0
 
-  node_b_id      = gns3_template.mikrotik2.id
+  node_b_id      = gns3_template.mikrotik[local.router_chain[count.index + 1]].id
   node_b_adapter = 1
   node_b_port    = 0
 }
 
 # ------------------------------------------------------------
-# MIKROTIK2 <-> mikrotik3
+# SWITCH2 <-> TODOS los mikrotik (un bloque los genera a todos)
 # ------------------------------------------------------------
 
-resource "gns3_link" "link_mikrotik2_mikrotik3" {
+resource "gns3_link" "switch_to_router" {
+  for_each = var.mikrotik_routers
+
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_template.mikrotik2.id
-  node_a_adapter = 2
-  node_a_port    = 0
+  node_a_id      = gns3_switch.switch2.id
+  node_a_adapter = 0
+  node_a_port    = each.value.wan_port
 
-  node_b_id      = gns3_template.mikrotik3.id
-  node_b_adapter = 1
+  node_b_id      = gns3_template.mikrotik[each.key].id
+  node_b_adapter = 0
   node_b_port    = 0
 }
-
 
 # ------------------------------------------------------------
 # ARRANCAR TODOS LOS NODOS
@@ -320,7 +247,7 @@ resource "null_resource" "fix_nat_symbol" {
         --connect-timeout 2 \
         --max-time 5 \
         -X PUT \
-        http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_nat.internet.id} \
+        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_nat.internet.id} \
         -H "Content-Type: application/json" \
         -d '{"symbol": ":/symbols/nat.svg"}' \
         -o /dev/null
@@ -354,7 +281,7 @@ resource "null_resource" "fix_switch_symbol" {
       --connect-timeout 2 \
       --max-time 5 \
       -X PUT \
-      http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch1.id} \
+      ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch1.id} \
       -H "Content-Type: application/json" \
       -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
       -o /dev/null
@@ -365,7 +292,7 @@ resource "null_resource" "fix_switch_symbol" {
       --connect-timeout 2 \
       --max-time 5 \
       -X PUT \
-      http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch2.id} \
+      ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch2.id} \
       -H "Content-Type: application/json" \
       -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
       -o /dev/null
@@ -388,7 +315,8 @@ resource "null_resource" "fix_pc_symbol" {
   ]
 
   triggers = {
-    node_id = gns3_template.office_pc.id
+    node_id  = gns3_template.office_pc["pc1"].id
+    node2_id = gns3_template.office_pc["pc2"].id
   }
 
   provisioner "local-exec" {
@@ -397,12 +325,23 @@ resource "null_resource" "fix_pc_symbol" {
         --connect-timeout 2 \
         --max-time 5 \
         -X PUT \
-        http://localhost:3080/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_template.office_pc.id} \
+        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_template.office_pc["pc1"].id} \
         -H "Content-Type: application/json" \
         -d '{"symbol": ":/symbols/vpcs_guest.svg"}' \
         -o /dev/null
 
-      echo "PC icon actualizado correctamente"
+      echo "PC1 icon actualizado correctamente"
+
+      curl --fail --silent --show-error \
+        --connect-timeout 2 \
+        --max-time 5 \
+        -X PUT \
+        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_template.office_pc["pc2"].id} \
+        -H "Content-Type: application/json" \
+        -d '{"symbol": ":/symbols/vpcs_guest.svg"}' \
+        -o /dev/null
+
+      echo "PC2 icon actualizado correctamente"
     EOT
   }
 }
