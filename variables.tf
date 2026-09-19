@@ -53,8 +53,48 @@ variable "office_pcs" {
   default = {
     pc1 = { name = "Office-PC1", x = -100, y = 200, wan_port = 1 }
     pc2 = { name = "Office-PC2", x = 0, y = 200, wan_port = 2 }
-    pc3 = { name = "Office-PC3", x = 100, y = 200, wan_port = 3 }
 
   }
 }
+variable "plantaAlta_pcs" {
+  description = "PCs planta alta(VPCS). Cada entrada genera un nodo."
+  type = map(object({
+    wan_port = number
+    name     = string
+    x        = number
+    y        = number
+  }))
+  default = {
+    "alta-1" = { name = "PlantaAlta-PC1", x = 100, y = 200, wan_port = 1 }
+    "alta-2" = { name = "PlantaAlta-PC2", x = 200, y = 200, wan_port = 2 }
 
+  }
+}
+variable "plantaBaja_pcs" {
+  description = "PCs Planta Baja (VPCS). Cada entrada genera un nodo."
+  type = map(object({
+    wan_port = number
+    name     = string
+    x        = number
+    y        = number
+  }))
+  default = {
+    "baja-1" = { name = "PlantaBaja-PC1", x = 300, y = 200, wan_port = 1 }
+    "baja-2" = { name = "PlantaBaja-PC2", x = 400, y = 200, wan_port = 2 }
+
+  }
+}
+variable "deposito_pcs" {
+  description = "PCs deposito (VPCS). Cada entrada genera un nodo."
+  type = map(object({
+    wan_port = number
+    name     = string
+    x        = number
+    y        = number
+  }))
+  default = {
+    "depo-1" = { name = "Deposito-PC1", x = 500, y = 200, wan_port = 1 }
+    "depo-2" = { name = "Deposito-PC2", x = 600, y = 200, wan_port = 2 }
+
+  }
+}

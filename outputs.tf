@@ -34,8 +34,8 @@ output "mikrotik_ids" {
 }
 
 output "pc_ids" {
-  description = "IDs de los PCs de oficina."
+  description = "IDs de todos los PCs (oficina, plantas, deposito)."
   value = {
-    for k, pc in gns3_template.office_pc : k => pc.id
+    for k, pc in gns3_template.todas_las_pcs : k => pc.id
   }
 }

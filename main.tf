@@ -101,13 +101,16 @@ resource "gns3_template" "mikrotik" {
 }
 
 # ------------------------------------------------------------
-# 5. PC DE OFICINA - VPCS
+# 5. PCs - VPCS (oficina + plantas + deposito)
 # for_each: UN solo bloque genera TODOS los PCs.
-# La lista vive en var.office_pcs (variables.tf).
+# merge() une los mapas office_pcs + plantaAlta_pcs + plantaBaja_pcs
+# + deposito_pcs.
+# Ojo: las claves de todos los mapas deben ser UNICAS entre sí
+# (por eso prefijos "alta-", "baja-", "depo-").
 # ------------------------------------------------------------
 
-resource "gns3_template" "office_pc" {
-  for_each    = var.office_pcs
+resource "gns3_template" "todas_las_pcs" {
+  for_each    = merge(var.office_pcs, var.plantaAlta_pcs, var.plantaBaja_pcs, var.deposito_pcs)
   project_id  = gns3_project.lab.project_id
   name        = each.value.name
   template_id = var.vpcs_template_id
@@ -232,7 +235,7 @@ resource "gns3_link" "switch_to_pc" {
   node_a_adapter = 0
   node_a_port    = each.value.wan_port
 
-  node_b_id      = gns3_template.office_pc[each.key].id
+  node_b_id      = gns3_template.todas_las_pcs[each.key].id
   node_b_adapter = 0
   node_b_port    = 0
 }
@@ -266,7 +269,7 @@ locals {
       "switch4" = { node_id = gns3_switch.switch4.id, symbol = ":/symbols/ethernet_switch.svg" }
       "switch5" = { node_id = gns3_switch.switch5.id, symbol = ":/symbols/ethernet_switch.svg" }
     },
-    { for k, pc in gns3_template.office_pc : k => { node_id = pc.id, symbol = ":/symbols/vpcs_guest.svg" } }
+    { for k, pc in gns3_template.todas_las_pcs : k => { node_id = pc.id, symbol = ":/symbols/vpcs_guest.svg" } }
   )
 }
 
