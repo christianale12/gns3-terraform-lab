@@ -1,20 +1,36 @@
 # ============================================================
 # GNS3 ENTERPRISE BRANCH LAB
 # Terraform + GNS3
+#
+# Cómo está organizado este archivo:
+#   1. Proyecto   -> contenedor del lab en GNS3
+#   2. Nodos      -> NAT, switches, routers MikroTik y PCs VPCS
+#   3. Enlaces    -> los cables que conectan los nodos
+#   4. Auto-start -> enciende todos los nodos al aplicar
+#   5. Íconos     -> corrige los íconos por API REST
+#   6. moved      -> renombres de recursos sin perder el estado
 # ============================================================
 
 
-# ------------------------------------------------------------
+# ============================================================
 # 1. PROYECTO
-# ------------------------------------------------------------
+# Todo nodo y enlace del lab vive adentro de este proyecto.
+# El project_id se referencia en cada recurso con
+# gns3_project.lab.project_id.
+# ============================================================
 
 resource "gns3_project" "lab" {
   name = var.project_name
 }
 
 
+# ============================================================
+# 2. NODOS DE RED
+# ============================================================
+
 # ------------------------------------------------------------
-# 2. NAT - SALIDA A INTERNET
+# 2.1 NAT - simula la salida a internet.
+# Es único y sin repetición: todo el lab sale por acá.
 # ------------------------------------------------------------
 
 resource "gns3_nat" "internet" {
@@ -25,9 +41,15 @@ resource "gns3_nat" "internet" {
   y = -200
 }
 
-
 # ------------------------------------------------------------
-# 3. SWITCH CORE L2
+# 2.2 SWITCHES de capa 2.
+# Se declaran uno por uno (sin for_each) porque cada switch
+# tiene rol y posición propios en el lienzo.
+#   - switch1: PCs de oficina
+#   - switch2: uplink NAT/WAN (reparte red a todos los routers)
+#   - switch3: PCs planta alta + router edge2
+#   - switch4: PCs planta baja + router edge3
+#   - switch5: PCs depósito + router edge4
 # ------------------------------------------------------------
 
 resource "gns3_switch" "switch1" {
@@ -38,10 +60,6 @@ resource "gns3_switch" "switch1" {
   y = 100
 }
 
-# ------------------------------------------------------------
-#  SWITCH CORE L2 a NAT
-# ------------------------------------------------------------
-
 resource "gns3_switch" "switch2" {
   project_id = gns3_project.lab.project_id
   name       = "Core-Switch2"
@@ -49,9 +67,6 @@ resource "gns3_switch" "switch2" {
   x = 150
   y = -100
 }
-# ------------------------------------------------------------
-#  SWITCH3
-# ------------------------------------------------------------
 
 resource "gns3_switch" "switch3" {
   project_id = gns3_project.lab.project_id
@@ -60,9 +75,6 @@ resource "gns3_switch" "switch3" {
   x = 150
   y = 100
 }
-# ------------------------------------------------------------
-#  SWITCH4
-# ------------------------------------------------------------
 
 resource "gns3_switch" "switch4" {
   project_id = gns3_project.lab.project_id
@@ -71,9 +83,6 @@ resource "gns3_switch" "switch4" {
   x = 300
   y = 100
 }
-# ------------------------------------------------------------
-#  SWITCH5
-# ------------------------------------------------------------
 
 resource "gns3_switch" "switch5" {
   project_id = gns3_project.lab.project_id
@@ -82,10 +91,12 @@ resource "gns3_switch" "switch5" {
   x = 450
   y = 100
 }
+
 # ------------------------------------------------------------
-# 4. ROUTER MIKROTIK CHR
-# for_each: UN solo bloque genera TODOS los routers.
-# La lista vive en var.mikrotik_routers (variables.tf).
+# 2.3 ROUTERS MIKROTIK CHR - un solo bloque crea TODOS.
+# for_each recorre el mapa var.mikrotik_routers (variables.tf).
+# Agregar un router = agregar una entrada al mapa, sin tocar
+# este archivo.
 # ------------------------------------------------------------
 
 resource "gns3_template" "mikrotik" {
@@ -101,16 +112,13 @@ resource "gns3_template" "mikrotik" {
 }
 
 # ------------------------------------------------------------
-# 5. PCs - VPCS (oficina + plantas + deposito)
-# for_each: UN solo bloque genera TODOS los PCs.
-# merge() une los mapas office_pcs + plantaAlta_pcs + plantaBaja_pcs
-# + deposito_pcs.
-# Ojo: las claves de todos los mapas deben ser UNICAS entre sí
-# (por eso prefijos "alta-", "baja-", "depo-").
+# 2.4 PCs VPCS - un solo bloque crea TODOS los PCs.
+# for_each recorre var.pcs (variables.tf), que ya trae la clave
+# "switch" para saber a qué switch pertenece cada PC.
 # ------------------------------------------------------------
 
 resource "gns3_template" "todas_las_pcs" {
-  for_each    = merge(var.office_pcs, var.plantaAlta_pcs, var.plantaBaja_pcs, var.deposito_pcs)
+  for_each    = var.pcs
   project_id  = gns3_project.lab.project_id
   name        = each.value.name
   template_id = var.vpcs_template_id
@@ -123,15 +131,18 @@ resource "gns3_template" "todas_las_pcs" {
 
 
 # ============================================================
-# ENLACES
+# 3. ENLACES (los cables)
+# Cada enlace tiene dos extremos:
+#   node_a_* = extremo A con su id, adapter y puerto
+#   node_b_* = extremo B con su id, adapter y puerto
+# El puerto del switch va en node_a_port (o node_b_port).
 # ============================================================
 
-
 # ------------------------------------------------------------
-# NAT <-> SWITCH2
+# 3.1 NAT -> SWITCH2 (uplink a internet)
 # ------------------------------------------------------------
 
-resource "gns3_link" "link_nat_mikrotik" {
+resource "gns3_link" "link_nat_switch" {
   project_id = gns3_project.lab.project_id
 
   node_a_id      = gns3_nat.internet.id
@@ -141,51 +152,43 @@ resource "gns3_link" "link_nat_mikrotik" {
   node_b_id      = gns3_switch.switch2.id
   node_b_adapter = 0
   node_b_port    = 0
-
 }
 
-
 # ------------------------------------------------------------
-# MIKROTIK1 <-> SWITCH
+# 3.2 ROUTER -> SU SWITCH (un bloque los genera a todos)
+# El mapa mikrotik_to_switch le dice a cada router a qué switch
+# se enlaza y en qué adapter. node_a es el router y node_b el
+# switch.
 # ------------------------------------------------------------
 
-resource "gns3_link" "link_mikrotik_switch" {
+locals {
+  mikrotik_to_switch = {
+    edge1 = { switch_id = gns3_switch.switch1.id, adapter = 1 }
+    edge2 = { switch_id = gns3_switch.switch3.id, adapter = 4 }
+    edge3 = { switch_id = gns3_switch.switch4.id, adapter = 4 }
+    edge4 = { switch_id = gns3_switch.switch5.id, adapter = 4 }
+  }
+}
+
+resource "gns3_link" "mikrotik_to_switch" {
+  for_each = local.mikrotik_to_switch
+
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_template.mikrotik["edge1"].id
-  node_a_adapter = 1
+  node_a_id      = gns3_template.mikrotik[each.key].id
+  node_a_adapter = each.value.adapter
   node_a_port    = 0
 
-  node_b_id      = gns3_switch.switch1.id
+  node_b_id      = each.value.switch_id
   node_b_adapter = 0
   node_b_port    = 0
 }
 
-
 # ------------------------------------------------------------
-# MIKROTIK2 <-> SWITCH3
-# ------------------------------------------------------------
-
-resource "gns3_link" "link_mikrotik2_switch2" {
-  project_id = gns3_project.lab.project_id
-
-  node_a_id      = gns3_template.mikrotik["edge2"].id
-  node_a_adapter = 4
-  node_a_port    = 0
-
-  node_b_id      = gns3_switch.switch3.id
-  node_b_adapter = 0
-  node_b_port    = 0
-}
-
-
-
-
-
-
-# ------------------------------------------------------------
-# CADENA router <-> router (un solo bloque genera todos los pares)
-# Regla física: router N se une con router N+1 (adap2 p0 -> adap1 p0)
+# 3.3 CADENA router <-> router
+# Conecta router N con router N+1 (adap2 p0 -> adap1 p0).
+# count genera length(routers) - 1 enlaces, es decir los pares
+# consecutivos de la lista.
 # ------------------------------------------------------------
 
 locals {
@@ -206,7 +209,9 @@ resource "gns3_link" "router_to_router" {
 }
 
 # ------------------------------------------------------------
-# SWITCH2 <-> TODOS los mikrotik (un bloque los genera a todos)
+# 3.4 SWITCH2 -> TODOS los routers (uplink WAN)
+# switch2 reparte la salida a internet a todos los routers.
+# El puerto de switch2 es each.value.wan_port (vive en el mapa).
 # ------------------------------------------------------------
 
 resource "gns3_link" "switch_to_router" {
@@ -222,27 +227,50 @@ resource "gns3_link" "switch_to_router" {
   node_b_adapter = 0
   node_b_port    = 0
 }
+
 # ------------------------------------------------------------
-# SWITCH1 <-> TODOS los mikrotik (un bloque los genera a todos)
+# 3.5 SWITCH -> CADA PC (un bloque los genera a todos)
+# var.pcs ya trae la clave "switch" (ej. "switch3") en cada PC.
+# switch_ids traduce esa clave al id real del recurso, y
+# pc_switch_map deja listo un mapa con TODOS los datos que
+# necesita el enlace: el switch y el puerto wan de cada PC.
 # ------------------------------------------------------------
 
-resource "gns3_link" "switch_to_pc" {
-  for_each = var.office_pcs
+locals {
+  switch_ids = {
+    switch1 = gns3_switch.switch1.id
+    switch2 = gns3_switch.switch2.id
+    switch3 = gns3_switch.switch3.id
+    switch4 = gns3_switch.switch4.id
+    switch5 = gns3_switch.switch5.id
+  }
+
+  pc_switch_map = {
+    for k, pc in var.pcs : k => merge(pc, { switch = local.switch_ids[pc.switch] })
+  }
+}
+
+resource "gns3_link" "pc_to_switch" {
+  for_each = local.pc_switch_map
 
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_switch.switch1.id
+  # Extremo A: el switch (id salido del mapa enriquecido)
+  node_a_id      = each.value.switch
   node_a_adapter = 0
   node_a_port    = each.value.wan_port
 
+  # Extremo B: el PC
   node_b_id      = gns3_template.todas_las_pcs[each.key].id
   node_b_adapter = 0
   node_b_port    = 0
 }
 
-# ------------------------------------------------------------
-# ARRANCAR TODOS LOS NODOS
-# ------------------------------------------------------------
+
+# ============================================================
+# 4. AUTO-START
+# Enciende todos los nodos del proyecto al aplicar.
+# ============================================================
 
 resource "gns3_start_all" "start_nodes" {
   project_id = gns3_project.lab.project_id
@@ -250,13 +278,11 @@ resource "gns3_start_all" "start_nodes" {
 
 
 # ============================================================
-# CORRECCIÓN AUTOMÁTICA DE ÍCONOS
-# ============================================================
-#
-# MikroTik NO se modifica: su template ya trae el icono correcto.
-# Para el resto, UN SOLO bloque recorre un mapa "nodo -> simbolo"
-# y aplica cada icono con un curl. Agregar un nodo (PC, switch...)
-# no requiere tocar este código.
+# 5. ÍCONOS
+# La API de GNS3 no aplica el ícono de los templates al crear
+# el nodo automáticamente. Este bloque recorre un mapa
+# "clave -> {node_id, symbol}" y lo corrige con curl.
+# MikroTik NO se toca: su template ya trae el ícono correcto.
 # ============================================================
 
 locals {
@@ -300,4 +326,27 @@ resource "null_resource" "fix_icons" {
       echo "Icono del nodo ${each.key} actualizado"
     EOT
   }
+}
+
+
+# ============================================================
+# 6. RENOMBRES (moved)
+# Cuando se cambia el nombre de un recurso, Terraform lo
+# destruiría y recrearía. Bloques `moved` le dicen que solo es
+# un cambio de nombre, conservando el estado y los recursos.
+# ============================================================
+
+moved {
+  from = gns3_template.office_pc
+  to   = gns3_template.todas_las_pcs
+}
+
+moved {
+  from = gns3_link.link_nat_mikrotik
+  to   = gns3_link.link_nat_switch
+}
+
+moved {
+  from = gns3_link.pc_to_Swittch
+  to   = gns3_link.pc_to_switch
 }

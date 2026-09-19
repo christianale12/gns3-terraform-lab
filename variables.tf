@@ -42,59 +42,23 @@ variable "mikrotik_routers" {
   }
 }
 
-variable "office_pcs" {
-  description = "PCs de oficina (VPCS). Cada entrada genera un nodo."
+variable "pcs" {
+  description = "PCs VPCS. Una sola variable agrupa todas (oficina, plantas y depósito). Cada entrada genera un nodo y declara a qué switch se conecta con la clave 'switch'."
   type = map(object({
-    wan_port = number
     name     = string
     x        = number
     y        = number
-  }))
-  default = {
-    pc1 = { name = "Office-PC1", x = -100, y = 200, wan_port = 1 }
-    pc2 = { name = "Office-PC2", x = 0, y = 200, wan_port = 2 }
-
-  }
-}
-variable "plantaAlta_pcs" {
-  description = "PCs planta alta(VPCS). Cada entrada genera un nodo."
-  type = map(object({
     wan_port = number
-    name     = string
-    x        = number
-    y        = number
+    switch   = string
   }))
   default = {
-    "alta-1" = { name = "PlantaAlta-PC1", x = 100, y = 200, wan_port = 1 }
-    "alta-2" = { name = "PlantaAlta-PC2", x = 200, y = 200, wan_port = 2 }
-
-  }
-}
-variable "plantaBaja_pcs" {
-  description = "PCs Planta Baja (VPCS). Cada entrada genera un nodo."
-  type = map(object({
-    wan_port = number
-    name     = string
-    x        = number
-    y        = number
-  }))
-  default = {
-    "baja-1" = { name = "PlantaBaja-PC1", x = 300, y = 200, wan_port = 1 }
-    "baja-2" = { name = "PlantaBaja-PC2", x = 400, y = 200, wan_port = 2 }
-
-  }
-}
-variable "deposito_pcs" {
-  description = "PCs deposito (VPCS). Cada entrada genera un nodo."
-  type = map(object({
-    wan_port = number
-    name     = string
-    x        = number
-    y        = number
-  }))
-  default = {
-    "depo-1" = { name = "Deposito-PC1", x = 500, y = 200, wan_port = 1 }
-    "depo-2" = { name = "Deposito-PC2", x = 600, y = 200, wan_port = 2 }
-
+    pc1      = { name = "Office-PC1", x = -100, y = 200, wan_port = 1, switch = "switch1" }
+    pc2      = { name = "Office-PC2", x = 0, y = 200, wan_port = 2, switch = "switch1" }
+    "alta-1" = { name = "PlantaAlta-PC1", x = 100, y = 200, wan_port = 1, switch = "switch3" }
+    "alta-2" = { name = "PlantaAlta-PC2", x = 200, y = 200, wan_port = 2, switch = "switch3" }
+    "baja-1" = { name = "PlantaBaja-PC1", x = 300, y = 200, wan_port = 1, switch = "switch4" }
+    "baja-2" = { name = "PlantaBaja-PC2", x = 400, y = 200, wan_port = 2, switch = "switch4" }
+    "depo-1" = { name = "Deposito-PC1", x = 500, y = 200, wan_port = 1, switch = "switch5" }
+    "depo-2" = { name = "Deposito-PC2", x = 600, y = 200, wan_port = 2, switch = "switch5" }
   }
 }
