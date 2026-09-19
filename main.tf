@@ -32,7 +32,7 @@ resource "gns3_nat" "internet" {
 
 resource "gns3_switch" "switch1" {
   project_id = gns3_project.lab.project_id
-  name       = "Core-Switch"
+  name       = "Core-Switch1"
 
   x = 0
   y = 100
@@ -49,8 +49,17 @@ resource "gns3_switch" "switch2" {
   x = 150
   y = -100
 }
+# ------------------------------------------------------------
+#  SWITCH CORE L2 a NATMikrotik2
+# ------------------------------------------------------------
 
+resource "gns3_switch" "switch3" {
+  project_id = gns3_project.lab.project_id
+  name       = "Core-Switch3"
 
+  x = 150
+  y = 100
+}
 # ------------------------------------------------------------
 # 4. ROUTER MIKROTIK CHR
 # for_each: UN solo bloque genera TODOS los routers.
@@ -128,6 +137,22 @@ resource "gns3_link" "link_mikrotik_switch" {
 }
 
 
+# ------------------------------------------------------------
+# MIKROTIK2 <-> SWITCH3
+# ------------------------------------------------------------
+
+resource "gns3_link" "link_mikrotik2_switch2" {
+  project_id = gns3_project.lab.project_id
+
+  node_a_id      = gns3_template.mikrotik["edge2"].id
+  node_a_adapter = 4
+  node_a_port    = 0
+
+  node_b_id      = gns3_switch.switch3.id
+  node_b_adapter = 0
+  node_b_port    = 0
+}
+
 
 
 
@@ -203,132 +228,49 @@ resource "gns3_start_all" "start_nodes" {
 # CORRECCIÓN AUTOMÁTICA DE ÍCONOS
 # ============================================================
 #
-# MikroTik NO se modifica.
-# Su template ya proporciona el icono correcto.
-#
-# Los otros tres nodos se corrigen mediante la API de GNS3.
-# Los node_id funcionan como trigger para que, después de un
-# destroy/apply, los nuevos nodos vuelvan a recibir su símbolo.
+# MikroTik NO se modifica: su template ya trae el icono correcto.
+# Para el resto, UN SOLO bloque recorre un mapa "nodo -> simbolo"
+# y aplica cada icono con un curl. Agregar un nodo (PC, switch...)
+# no requiere tocar este código.
 # ============================================================
 
+locals {
+  icon_map = merge(
+    {
+      "nat"     = { node_id = gns3_nat.internet.id, symbol = ":/symbols/nat.svg" }
+      "switch1" = { node_id = gns3_switch.switch1.id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch2" = { node_id = gns3_switch.switch2.id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch3" = { node_id = gns3_switch.switch3.id, symbol = ":/symbols/ethernet_switch.svg" }
+    },
+    { for k, pc in gns3_template.office_pc : k => { node_id = pc.id, symbol = ":/symbols/vpcs_guest.svg" } }
+  )
+}
 
-# ------------------------------------------------------------
-# NAT
-# ------------------------------------------------------------
-
-resource "null_resource" "fix_nat_symbol" {
+resource "null_resource" "fix_icons" {
+  for_each = local.icon_map
 
   depends_on = [
     gns3_start_all.start_nodes
   ]
 
   triggers = {
-    node_id = gns3_nat.internet.id
+    node_id = each.value.node_id
+    symbol  = each.value.symbol
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      sleep 3
-
+      sleep 2
       curl --fail --silent --show-error \
         --connect-timeout 2 \
         --max-time 5 \
         -X PUT \
-        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_nat.internet.id} \
+        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${each.value.node_id} \
         -H "Content-Type: application/json" \
-        -d '{"symbol": ":/symbols/nat.svg"}' \
+        -d '{"symbol": "${each.value.symbol}"}' \
         -o /dev/null
 
-      echo "NAT icon actualizado correctamente"
-    EOT
-  }
-}
-
-
-# ------------------------------------------------------------
-# SWITCH
-# ------------------------------------------------------------
-
-resource "null_resource" "fix_switch_symbol" {
-
-  depends_on = [
-    gns3_start_all.start_nodes,
-    null_resource.fix_nat_symbol
-  ]
-
-  triggers = {
-    switch1_id = gns3_switch.switch1.id
-    switch2_id = gns3_switch.switch2.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-
-    curl --fail --silent --show-error \
-      --connect-timeout 2 \
-      --max-time 5 \
-      -X PUT \
-      ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch1.id} \
-      -H "Content-Type: application/json" \
-      -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
-      -o /dev/null
-
-    echo "Switch1 icon actualizado correctamente"
-
-    curl --fail --silent --show-error \
-      --connect-timeout 2 \
-      --max-time 5 \
-      -X PUT \
-      ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_switch.switch2.id} \
-      -H "Content-Type: application/json" \
-      -d '{"symbol": ":/symbols/ethernet_switch.svg"}' \
-      -o /dev/null
-
-    echo "Switch2 icon actualizado correctamente"
-
-  EOT
-  }
-}
-
-# ------------------------------------------------------------
-# PC
-# ------------------------------------------------------------
-
-resource "null_resource" "fix_pc_symbol" {
-
-  depends_on = [
-    gns3_start_all.start_nodes,
-    null_resource.fix_switch_symbol
-  ]
-
-  triggers = {
-    node_id  = gns3_template.office_pc["pc1"].id
-    node2_id = gns3_template.office_pc["pc2"].id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      curl --fail --silent --show-error \
-        --connect-timeout 2 \
-        --max-time 5 \
-        -X PUT \
-        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_template.office_pc["pc1"].id} \
-        -H "Content-Type: application/json" \
-        -d '{"symbol": ":/symbols/vpcs_guest.svg"}' \
-        -o /dev/null
-
-      echo "PC1 icon actualizado correctamente"
-
-      curl --fail --silent --show-error \
-        --connect-timeout 2 \
-        --max-time 5 \
-        -X PUT \
-        ${var.gns3_host}/v2/projects/${gns3_project.lab.project_id}/nodes/${gns3_template.office_pc["pc2"].id} \
-        -H "Content-Type: application/json" \
-        -d '{"symbol": ":/symbols/vpcs_guest.svg"}' \
-        -o /dev/null
-
-      echo "PC2 icon actualizado correctamente"
+      echo "Icono del nodo ${each.key} actualizado"
     EOT
   }
 }
