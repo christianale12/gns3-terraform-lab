@@ -51,8 +51,12 @@ variable "office_pcs" {
     y        = number
   }))
   default = {
-    pc1 = { name = "Office-PC", x = -100, y = 200, wan_port = 1 }
-    pc2 = { name = "Office-PC2", x = 100, y = 200, wan_port = 2 }
+    pc1 = { name = "Office-PC1", x = -100, y = 200, wan_port = 1 }
+    pc2 = { name = "Office-PC2", x = 0, y = 200, wan_port = 2 }
+    pc3 = { name = "Office-PC3", x = 100, y = 200, wan_port = 3 }
+    pc4 = { name = "Office-PC4", x = 150, y = 200, wan_port = 4 }
+    pc5 = { name = "Office-PC5", x = 200, y = 200, wan_port = 5 }
+
   }
 }
 
