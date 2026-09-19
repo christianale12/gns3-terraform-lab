@@ -45,12 +45,14 @@ variable "mikrotik_routers" {
 variable "office_pcs" {
   description = "PCs de oficina (VPCS). Cada entrada genera un nodo."
   type = map(object({
-    name = string
-    x    = number
-    y    = number
+    wan_port = number
+    name     = string
+    x        = number
+    y        = number
   }))
   default = {
-    pc1 = { name = "Office-PC", x = -100, y = 200 }
-    pc2 = { name = "Office-PC2", x = 100, y = 200 }
+    pc1 = { name = "Office-PC", x = -100, y = 200, wan_port = 1 }
+    pc2 = { name = "Office-PC2", x = 100, y = 200, wan_port = 2 }
   }
 }
+
