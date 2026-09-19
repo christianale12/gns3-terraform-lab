@@ -50,7 +50,7 @@ resource "gns3_switch" "switch2" {
   y = -100
 }
 # ------------------------------------------------------------
-#  SWITCH CORE L2 a NATMikrotik2
+#  SWITCH3
 # ------------------------------------------------------------
 
 resource "gns3_switch" "switch3" {
@@ -58,6 +58,28 @@ resource "gns3_switch" "switch3" {
   name       = "Core-Switch3"
 
   x = 150
+  y = 100
+}
+# ------------------------------------------------------------
+#  SWITCH4
+# ------------------------------------------------------------
+
+resource "gns3_switch" "switch4" {
+  project_id = gns3_project.lab.project_id
+  name       = "Core-Switch4"
+
+  x = 300
+  y = 100
+}
+# ------------------------------------------------------------
+#  SWITCH5
+# ------------------------------------------------------------
+
+resource "gns3_switch" "switch5" {
+  project_id = gns3_project.lab.project_id
+  name       = "Core-Switch5"
+
+  x = 450
   y = 100
 }
 # ------------------------------------------------------------
@@ -241,6 +263,8 @@ locals {
       "switch1" = { node_id = gns3_switch.switch1.id, symbol = ":/symbols/ethernet_switch.svg" }
       "switch2" = { node_id = gns3_switch.switch2.id, symbol = ":/symbols/ethernet_switch.svg" }
       "switch3" = { node_id = gns3_switch.switch3.id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch4" = { node_id = gns3_switch.switch4.id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch5" = { node_id = gns3_switch.switch5.id, symbol = ":/symbols/ethernet_switch.svg" }
     },
     { for k, pc in gns3_template.office_pc : k => { node_id = pc.id, symbol = ":/symbols/vpcs_guest.svg" } }
   )
