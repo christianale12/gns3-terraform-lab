@@ -42,9 +42,10 @@ resource "gns3_nat" "internet" {
 }
 
 # ------------------------------------------------------------
-# 2.2 SWITCHES de capa 2.
-# Se declaran uno por uno (sin for_each) porque cada switch
-# tiene rol y posición propios en el lienzo.
+# 2.2 SWITCHES de capa 2 - un solo bloque crea TODOS.
+# for_each recorre el mapa var.switch_all (variables.tf).
+# Agregar un switch = agregar una entrada al mapa, sin tocar
+# este archivo.
 #   - switch1: PCs de oficina
 #   - switch2: uplink NAT/WAN (reparte red a todos los routers)
 #   - switch3: PCs planta alta + router edge2
@@ -52,44 +53,20 @@ resource "gns3_nat" "internet" {
 #   - switch5: PCs depósito + router edge4
 # ------------------------------------------------------------
 
-resource "gns3_switch" "switch1" {
-  project_id = gns3_project.lab.project_id
-  name       = "Core-Switch1"
-
-  x = 0
-  y = 100
+data "gns3_template_id" "switch" {
+  name = "Ethernet switch"
 }
 
-resource "gns3_switch" "switch2" {
-  project_id = gns3_project.lab.project_id
-  name       = "Core-Switch2"
+resource "gns3_template" "switch" {
+  for_each    = var.switch_all
+  project_id  = gns3_project.lab.project_id
+  name        = each.value.name
+  template_id = data.gns3_template_id.switch.template_id
 
-  x = 150
-  y = -100
-}
+  start = true
 
-resource "gns3_switch" "switch3" {
-  project_id = gns3_project.lab.project_id
-  name       = "Core-Switch3"
-
-  x = 150
-  y = 100
-}
-
-resource "gns3_switch" "switch4" {
-  project_id = gns3_project.lab.project_id
-  name       = "Core-Switch4"
-
-  x = 300
-  y = 100
-}
-
-resource "gns3_switch" "switch5" {
-  project_id = gns3_project.lab.project_id
-  name       = "Core-Switch5"
-
-  x = 450
-  y = 100
+  x = each.value.x
+  y = each.value.y
 }
 
 # ------------------------------------------------------------
@@ -149,7 +126,7 @@ resource "gns3_link" "link_nat_switch" {
   node_a_adapter = 0
   node_a_port    = 0
 
-  node_b_id      = gns3_switch.switch2.id
+  node_b_id      = gns3_template.switch["switch2"].id
   node_b_adapter = 0
   node_b_port    = 0
 }
@@ -163,10 +140,10 @@ resource "gns3_link" "link_nat_switch" {
 
 locals {
   mikrotik_to_switch = {
-    edge1 = { switch_id = gns3_switch.switch1.id, adapter = 1 }
-    edge2 = { switch_id = gns3_switch.switch3.id, adapter = 4 }
-    edge3 = { switch_id = gns3_switch.switch4.id, adapter = 4 }
-    edge4 = { switch_id = gns3_switch.switch5.id, adapter = 4 }
+    edge1 = { switch_id = gns3_template.switch["switch1"].id, adapter = 1 }
+    edge2 = { switch_id = gns3_template.switch["switch3"].id, adapter = 4 }
+    edge3 = { switch_id = gns3_template.switch["switch4"].id, adapter = 4 }
+    edge4 = { switch_id = gns3_template.switch["switch5"].id, adapter = 4 }
   }
 }
 
@@ -219,7 +196,7 @@ resource "gns3_link" "switch_to_router" {
 
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_switch.switch2.id
+  node_a_id      = gns3_template.switch["switch2"].id
   node_a_adapter = 0
   node_a_port    = each.value.wan_port
 
@@ -238,11 +215,11 @@ resource "gns3_link" "switch_to_router" {
 
 locals {
   switch_ids = {
-    switch1 = gns3_switch.switch1.id
-    switch2 = gns3_switch.switch2.id
-    switch3 = gns3_switch.switch3.id
-    switch4 = gns3_switch.switch4.id
-    switch5 = gns3_switch.switch5.id
+    switch1 = gns3_template.switch["switch1"].id
+    switch2 = gns3_template.switch["switch2"].id
+    switch3 = gns3_template.switch["switch3"].id
+    switch4 = gns3_template.switch["switch4"].id
+    switch5 = gns3_template.switch["switch5"].id
   }
 
   pc_switch_map = {
@@ -289,11 +266,11 @@ locals {
   icon_map = merge(
     {
       "nat"     = { node_id = gns3_nat.internet.id, symbol = ":/symbols/nat.svg" }
-      "switch1" = { node_id = gns3_switch.switch1.id, symbol = ":/symbols/ethernet_switch.svg" }
-      "switch2" = { node_id = gns3_switch.switch2.id, symbol = ":/symbols/ethernet_switch.svg" }
-      "switch3" = { node_id = gns3_switch.switch3.id, symbol = ":/symbols/ethernet_switch.svg" }
-      "switch4" = { node_id = gns3_switch.switch4.id, symbol = ":/symbols/ethernet_switch.svg" }
-      "switch5" = { node_id = gns3_switch.switch5.id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch1" = { node_id = gns3_template.switch["switch1"].id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch2" = { node_id = gns3_template.switch["switch2"].id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch3" = { node_id = gns3_template.switch["switch3"].id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch4" = { node_id = gns3_template.switch["switch4"].id, symbol = ":/symbols/ethernet_switch.svg" }
+      "switch5" = { node_id = gns3_template.switch["switch5"].id, symbol = ":/symbols/ethernet_switch.svg" }
     },
     { for k, pc in gns3_template.todas_las_pcs : k => { node_id = pc.id, symbol = ":/symbols/vpcs_guest.svg" } }
   )

@@ -21,8 +21,7 @@ output "nat_node_id" {
 output "switch_ids" {
   description = "IDs de los switches de capa 2."
   value = {
-    core1 = gns3_switch.switch1.id
-    core2 = gns3_switch.switch2.id
+    for k, switch in gns3_template.switch : k => switch.id
   }
 }
 
