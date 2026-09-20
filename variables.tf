@@ -1,4 +1,6 @@
-
+#Genero cada coordenada del dispositivo en el liezo de gns3 con sus posiones 
+# y en main usa estas variables para generar iterando por cada uno de ellos
+# y con wan_port indica a donde se va a conectar
 variable "mikrotik_routers" {
   description = "Routers MikroTik de borde. Cada entrada genera un nodo; agregar uno aqui lo crea."
   type = map(object({
