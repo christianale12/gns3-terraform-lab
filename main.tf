@@ -8,7 +8,7 @@ resource "gns3_nat" "internet" {
   project_id = gns3_project.lab.project_id
   name       = "Internet-NAT"
 
-  x = 100
+  x = 200
   y = -200
 }
 

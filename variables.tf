@@ -46,7 +46,7 @@ variable "switch_all" {
   }))
   default = {
     switch1 = { name = "Core-Switch1", x = 0, y = 100, wan_port = 1 }
-    switch2 = { name = "Core-Switch2", x = 100, y = -100, wan_port = 2 }
+    switch2 = { name = "Core-Switch2", x = 200, y = -100, wan_port = 2 }
     switch3 = { name = "Core-Switch3", x = 150, y = 100, wan_port = 3 }
     switch4 = { name = "Core-Switch4", x = 300, y = 100, wan_port = 4 }
     switch5 = { name = "Core-Switch5", x = 450, y = 100, wan_port = 4 }
