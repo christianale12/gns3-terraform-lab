@@ -1,8 +1,4 @@
-# ============================================================
-#  NODOS DE RED
-# ============================================================
-# Es único y sin repetición: todo el lab sale por acá.
-# ------------------------------------------------------------
+# NODOS
 
 resource "gns3_nat" "internet" {
   project_id = gns3_project.lab.project_id
@@ -12,15 +8,7 @@ resource "gns3_nat" "internet" {
   y = -200
 }
 
-# ------------------------------------------------------------
-# SWITCHES de capa 2 - un solo bloque crea TODOS.
-#   - switch1: PCs de oficina
-#   - switch2: uplink NAT/WAN (reparte red a todos los routers)
-#   - switch3: PCs planta alta + router edge2
-#   - switch4: PCs planta baja + router edge3
-#   - switch5: PCs depósito + router edge4
-# ------------------------------------------------------------
-
+# Switches de capa 2 (template "Ethernet switch")
 data "gns3_template_id" "switch" {
   name = "Ethernet switch"
 }
@@ -36,8 +24,8 @@ resource "gns3_template" "switch" {
   x = each.value.x
   y = each.value.y
 }
-# ------------------------------------------------------------
-# 2.3 ROUTERS MIKROTIK CHR - un solo bloque crea TODOS.
+
+# Routers MikroTik CHR
 resource "gns3_template" "mikrotik" {
   for_each    = var.mikrotik_routers
   project_id  = gns3_project.lab.project_id
@@ -50,8 +38,7 @@ resource "gns3_template" "mikrotik" {
   y = each.value.y
 }
 
-# ------------------------------------------------------------
-# 2.4 PCs VPCS - un solo bloque crea TODOS los PCs.
+# PCs VPCS
 resource "gns3_template" "todas_las_pcs" {
   for_each    = var.pcs
   project_id  = gns3_project.lab.project_id
@@ -63,16 +50,10 @@ resource "gns3_template" "todas_las_pcs" {
   x = each.value.x
   y = each.value.y
 }
-# ============================================================
-# 3. ENLACES (los cables)
-# Cada enlace tiene dos extremos:
-#   node_a_* = extremo A con su id, adapter y puerto
-#   node_b_* = extremo B con su id, adapter y puerto
-# El puerto del switch va en node_a_port (o node_b_port).
-# ============================================================
-# ------------------------------------------------------------
-# 3.1 NAT -> SWITCH2 (uplink a internet)
-# ------------------------------------------------------------
+
+# ENLACES
+
+# NAT -> switch uplink
 resource "gns3_link" "link_nat_switch" {
   project_id = gns3_project.lab.project_id
 
@@ -80,18 +61,22 @@ resource "gns3_link" "link_nat_switch" {
   node_a_adapter = 0
   node_a_port    = 0
 
-  node_b_id      = gns3_template.switch["switch2"].id
+  node_b_id      = gns3_template.switch[var.uplink_switch].id
   node_b_adapter = 0
   node_b_port    = 0
 }
-# ------------------------------------------------------------
-# 3.2 ROUTER -> SU SWITCH (un bloque los genera a todos)
+
+# Router -> su switch (cada edge trae "switch" y "adapter" en su mapa)
 locals {
+  switch_ids = {
+    for k, s in gns3_template.switch : k => s.id
+  }
+
   mikrotik_to_switch = {
-    edge1 = { switch_id = gns3_template.switch["switch1"].id, adapter = 1 }
-    edge2 = { switch_id = gns3_template.switch["switch3"].id, adapter = 4 }
-    edge3 = { switch_id = gns3_template.switch["switch4"].id, adapter = 4 }
-    edge4 = { switch_id = gns3_template.switch["switch5"].id, adapter = 4 }
+    for k, r in var.mikrotik_routers : k => {
+      switch_id = local.switch_ids[r.switch]
+      adapter   = r.adapter
+    }
   }
 }
 
@@ -109,8 +94,7 @@ resource "gns3_link" "mikrotik_to_switch" {
   node_b_port    = 0
 }
 
-# ------------------------------------------------------------
-# 3.3 CADENA router <-> router
+# Cadena router <-> router
 locals {
   router_chain = tolist(keys(var.mikrotik_routers))
 }
@@ -128,18 +112,13 @@ resource "gns3_link" "router_to_router" {
   node_b_port    = 0
 }
 
-# ------------------------------------------------------------
-# 3.4 SWITCH2 -> TODOS los routers (uplink WAN)
-# switch2 reparte la salida a internet a todos los routers.
-# El puerto de switch2 es each.value.wan_port (vive en el mapa).
-# ------------------------------------------------------------
-
+# Switch uplink -> todos los routers (reparte internet)
 resource "gns3_link" "switch_to_router" {
   for_each = var.mikrotik_routers
 
   project_id = gns3_project.lab.project_id
 
-  node_a_id      = gns3_template.switch["switch2"].id
+  node_a_id      = gns3_template.switch[var.uplink_switch].id
   node_a_adapter = 0
   node_a_port    = each.value.wan_port
 
@@ -147,23 +126,9 @@ resource "gns3_link" "switch_to_router" {
   node_b_adapter = 0
   node_b_port    = 0
 }
-# ------------------------------------------------------------
-# 3.5 SWITCH -> CADA PC (un bloque los genera a todos)
-# var.pcs ya trae la clave "switch" (ej. "switch3") en cada PC.
-# switch_ids traduce esa clave al id real del recurso, y
-# pc_switch_map deja listo un mapa con TODOS los datos que
-# necesita el enlace: el switch y el puerto wan de cada PC.
-# ------------------------------------------------------------
 
+# Switch -> cada PC (el PC dice a que switch va en "switch")
 locals {
-  switch_ids = {
-    switch1 = gns3_template.switch["switch1"].id
-    switch2 = gns3_template.switch["switch2"].id
-    switch3 = gns3_template.switch["switch3"].id
-    switch4 = gns3_template.switch["switch4"].id
-    switch5 = gns3_template.switch["switch5"].id
-  }
-
   pc_switch_map = {
     for k, pc in var.pcs : k => merge(pc, { switch = local.switch_ids[pc.switch] })
   }
@@ -174,12 +139,10 @@ resource "gns3_link" "pc_to_switch" {
 
   project_id = gns3_project.lab.project_id
 
-  # Extremo A: el switch (id salido del mapa enriquecido)
   node_a_id      = each.value.switch
   node_a_adapter = 0
   node_a_port    = each.value.wan_port
 
-  # Extremo B: el PC
   node_b_id      = gns3_template.todas_las_pcs[each.key].id
   node_b_adapter = 0
   node_b_port    = 0

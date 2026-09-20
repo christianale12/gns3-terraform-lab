@@ -1,20 +1,9 @@
-
-
-# ============================================================
-# 1. PROYECTO
-
+# Proyecto del lab
 resource "gns3_project" "lab" {
   name = var.project_name
 }
 
-# ============================================================
-# TEMPLATES BASE DEL LAB
-# Acá viven las variables y recursos de infraestructura:
-# host de GNS3, nombre del proyecto y los template_id de
-# MikroTik y VPCS. Terraform los encuentra desde cualquier
-# archivo, no hace falta importarlos en main.tf.
-# ============================================================
-
+# Variables base del lab
 variable "gns3_host" {
   description = "URL base de la API REST del servidor GNS3."
   type        = string
@@ -27,21 +16,23 @@ variable "project_name" {
   default     = "enterprise_branch_lab"
 }
 
+# UUIDs de los templates registrados en GNS3
 variable "mikrotik_template_id" {
-  description = "UUID del template MikroTik CHR registrado en el servidor GNS3."
+  description = "UUID del template MikroTik CHR."
   type        = string
 }
 
 variable "vpcs_template_id" {
-  description = "UUID del template VPCS registrado en el servidor GNS3."
+  description = "UUID del template VPCS."
   type        = string
 }
 
+# Arranca todos los nodos del proyecto
 resource "gns3_start_all" "start_nodes" {
   project_id = gns3_project.lab.project_id
 }
 
-
+# Renombres de recursos: solo cambian el nombre en el estado, no recrean
 moved {
   from = gns3_template.office_pc
   to   = gns3_template.todas_las_pcs

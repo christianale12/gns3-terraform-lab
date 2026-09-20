@@ -1,8 +1,4 @@
-# ============================================================
-# OUTPUTS DEL LAB
-# Con "terraform output" puedes leer estos valores sin mirar el estado.
-# ============================================================
-
+# Valores generados que podes leer con "terraform output".
 output "project_id" {
   description = "ID del proyecto GNS3."
   value       = gns3_project.lab.project_id
@@ -21,20 +17,20 @@ output "nat_node_id" {
 output "switch_ids" {
   description = "IDs de los switches de capa 2."
   value = {
-    for k, switch in gns3_template.switch : k => switch.id
+    for k, s in gns3_template.switch : k => s.id
   }
 }
 
 output "mikrotik_ids" {
   description = "IDs de los routers MikroTik de borde."
   value = {
-    for k, router in gns3_template.mikrotik : k => router.id
+    for k, r in gns3_template.mikrotik : k => r.id
   }
 }
 
 output "pc_ids" {
-  description = "IDs de todos los PCs (oficina, plantas, deposito)."
+  description = "IDs de todos los PCs."
   value = {
-    for k, pc in gns3_template.todas_las_pcs : k => pc.id
+    for k, p in gns3_template.todas_las_pcs : k => p.id
   }
 }

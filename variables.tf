@@ -1,20 +1,27 @@
-#Genero cada coordenada del dispositivo en el liezo de gns3 con sus posiones 
-# y en main usa estas variables para generar iterando por cada uno de ellos
-# y con wan_port indica a donde se va a conectar
+# Cada dispositivo declara posicion y a donde conecta.
+# main.tf itera estos mapas para crear nodos y enlaces.
 variable "mikrotik_routers" {
-  description = "Routers MikroTik de borde. Cada entrada genera un nodo; agregar uno aqui lo crea."
+  description = "Routers MikroTik de borde. Cada entrada genera un nodo; agregar uno aqui lo crea. 'switch' declara a que switch se conecta y 'adapter' en que puerto del router."
   type = map(object({
     name     = string
     x        = number
     y        = number
     wan_port = number
+    switch   = string
+    adapter  = number
   }))
   default = {
-    edge1 = { name = "MikroTik-Edge-Router1", x = 0, y = 0, wan_port = 1 }
-    edge2 = { name = "MikroTik-Edge-Router2", x = 150, y = 0, wan_port = 2 }
-    edge3 = { name = "MikroTik-Edge-Router3", x = 300, y = 0, wan_port = 3 }
-    edge4 = { name = "MikroTik-Edge-Router4", x = 450, y = 0, wan_port = 4 }
+    edge1 = { name = "MikroTik-Edge-Router1", x = 0, y = 0, wan_port = 1, switch = "switch1", adapter = 1 }
+    edge2 = { name = "MikroTik-Edge-Router2", x = 150, y = 0, wan_port = 2, switch = "switch3", adapter = 4 }
+    edge3 = { name = "MikroTik-Edge-Router3", x = 300, y = 0, wan_port = 3, switch = "switch4", adapter = 4 }
+    edge4 = { name = "MikroTik-Edge-Router4", x = 450, y = 0, wan_port = 4, switch = "switch5", adapter = 4 }
   }
+}
+
+variable "uplink_switch" {
+  description = "Switch que hace de uplink/WAN: conecta el NAT y reparte internet a todos los routers."
+  type        = string
+  default     = "switch2"
 }
 
 variable "pcs" {
