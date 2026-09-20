@@ -1,3 +1,12 @@
+
+
+# ============================================================
+# 1. PROYECTO
+
+resource "gns3_project" "lab" {
+  name = var.project_name
+}
+
 # ============================================================
 # TEMPLATES BASE DEL LAB
 # Acá viven las variables y recursos de infraestructura:
@@ -26,4 +35,24 @@ variable "mikrotik_template_id" {
 variable "vpcs_template_id" {
   description = "UUID del template VPCS registrado en el servidor GNS3."
   type        = string
+}
+
+resource "gns3_start_all" "start_nodes" {
+  project_id = gns3_project.lab.project_id
+}
+
+
+moved {
+  from = gns3_template.office_pc
+  to   = gns3_template.todas_las_pcs
+}
+
+moved {
+  from = gns3_link.link_nat_mikrotik
+  to   = gns3_link.link_nat_switch
+}
+
+moved {
+  from = gns3_link.pc_to_Swittch
+  to   = gns3_link.pc_to_switch
 }

@@ -1,13 +1,5 @@
-
-
 # ============================================================
-# 1. PROYECTO
-
-resource "gns3_project" "lab" {
-  name = var.project_name
-}
-# ============================================================
-# 2. NODOS DE RED
+#  NODOS DE RED
 # ============================================================
 # Es único y sin repetición: todo el lab sale por acá.
 # ------------------------------------------------------------
@@ -191,30 +183,4 @@ resource "gns3_link" "pc_to_switch" {
   node_b_id      = gns3_template.todas_las_pcs[each.key].id
   node_b_adapter = 0
   node_b_port    = 0
-}
-
-
-# ============================================================
-# 4. AUTO-START
-# Enciende todos los nodos del proyecto al aplicar.
-# ============================================================
-
-resource "gns3_start_all" "start_nodes" {
-  project_id = gns3_project.lab.project_id
-}
-
-
-moved {
-  from = gns3_template.office_pc
-  to   = gns3_template.todas_las_pcs
-}
-
-moved {
-  from = gns3_link.link_nat_mikrotik
-  to   = gns3_link.link_nat_switch
-}
-
-moved {
-  from = gns3_link.pc_to_Swittch
-  to   = gns3_link.pc_to_switch
 }
