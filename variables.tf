@@ -1,30 +1,3 @@
-# ============================================================
-# VARIABLES DEL LAB
-# Las variables evitan repetir valores hardcodeados y permiten
-# reutilizar el código en entornos distintos.
-# ============================================================
-
-variable "gns3_host" {
-  description = "URL base de la API REST del servidor GNS3."
-  type        = string
-  default     = "http://localhost:3080"
-}
-
-variable "project_name" {
-  description = "Nombre del proyecto dentro de GNS3."
-  type        = string
-  default     = "enterprise_branch_lab"
-}
-
-variable "mikrotik_template_id" {
-  description = "UUID del template MikroTik CHR registrado en el servidor GNS3."
-  type        = string
-}
-
-variable "vpcs_template_id" {
-  description = "UUID del template VPCS registrado en el servidor GNS3."
-  type        = string
-}
 
 variable "mikrotik_routers" {
   description = "Routers MikroTik de borde. Cada entrada genera un nodo; agregar uno aqui lo crea."
@@ -62,6 +35,7 @@ variable "pcs" {
     "depo-2" = { name = "Deposito-PC2", x = 600, y = 200, wan_port = 2, switch = "switch5" }
   }
 }
+
 variable "switch_all" {
   description = "Switches de capa 2. Cada entrada genera un nodo; agregar uno aqui lo crea. La clave debe coincidir con el campo 'switch' de cada PC y con los enlaces."
   type = map(object({
